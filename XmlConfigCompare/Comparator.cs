@@ -1,72 +1,40 @@
-﻿namespace XmlConfigCompare
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+
+namespace XmlConfigCompare
 {
-    using System;
-    using System.IO;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Xml.Linq;
-    using System.Text;
-    using System.Windows.Forms;
-
-    public partial class FrmXmlConfigCompare : Form
+    internal class NodeInfo
     {
-        public FrmXmlConfigCompare()
-        {
-            InitializeComponent();
-        }
+        //public string Name { get; set; }
+        public string Value { get; set; }
+        public Dictionary<string, string> Attributes { get; set; }
+    }
 
-        private void btnSelectConfig1_Click(object sender, EventArgs e)
-        {
-            openFileDialog1.FileName = tbConfig1.Text;
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-                tbConfig1.Text = openFileDialog1.FileName;
-        }
+    internal class CompareAttrResult
+    {
+        public string Attribute { get; set; }
+        public string ValueInConfig1 { get; set; }
+        public string ValueInConfig2 { get; set; }
+    }
 
-        private void btnSelectConfig2_Click(object sender, EventArgs e)
-        {
-            openFileDialog1.FileName = tbConfig2.Text;
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-                tbConfig2.Text = openFileDialog1.FileName;
-        }
+    internal class CompareResult
+    {
+        public List<string> MissedInConfig1 { get; set; }
+        public List<string> OnlyInConfig1 { get; set; }
+        public List<string> ChangedInConfig1 { get; set; }
+        public Dictionary<string, List<CompareAttrResult>> Changes { get; set; }
+    }
 
-        private void btnSelectConfig3_Click(object sender, EventArgs e)
-        {
-            openFileDialog1.FileName = tbConfig3.Text;
-            if (openFileDialog1.ShowDialog() == DialogResult.OK)
-                tbConfig3.Text = openFileDialog1.FileName;
-        }
+    internal class Comparator
+    {
+        private readonly List<string> defaultKeyAttributes = new List<string> { "name", "key", "ref", "path", "assembly", "path", "fileextension" };
 
-        private void btnSelectResult_Click(object sender, EventArgs e)
-        {
-            saveFileDialog1.FileName = tbResult.Text;
-            if (saveFileDialog1.ShowDialog() == DialogResult.OK)
-                tbResult.Text = saveFileDialog1.FileName;
-        }
-
-        readonly List<string> keyAttributes = new List<string> { "name", "key", "ref", "path", "assembly", "path", "fileextension" };
-
-        private class NodeInfo
-        {
-            //public string Name { get; set; }
-            public string Value { get; set; }
-            public Dictionary<string, string> Attributes { get; set; }
-        }
-
-        private class CompareAttrResult
-        {
-            public string Attribute { get; set; }
-            public string ValueInConfig1 { get; set; }
-            public string ValueInConfig2 { get; set; }
-        }
-
-        private class CompareResult
-        {
-            public List<string> MissedInConfig1 { get; set; }
-            public List<string> OnlyInConfig1 { get; set; }
-            public List<string> ChangedInConfig1 { get; set; }
-            public Dictionary<string, List<CompareAttrResult>> Changes { get; set; }
-        }
-
+        private List<string> keyAttributes => defaultKeyAttributes;
+        
         private void ProcessNode(ref Dictionary<string, NodeInfo> values, string parentName, XElement node)
         {
             string keyAttr = null;
@@ -91,7 +59,7 @@
                 ProcessNode(ref values, name, subNode);
         }
 
-        private Dictionary<string, NodeInfo> XMLToDictionary(string filename)
+        public Dictionary<string, NodeInfo> XMLToDictionary(string filename)
         {
             var root = XElement.Load(filename);
             var values = new Dictionary<string, NodeInfo>();
@@ -113,7 +81,7 @@
             return string.Equals(TrimSpaces(value1), TrimSpaces(value2));
         }
 
-        private CompareResult Compare(Dictionary<string, NodeInfo> config1, Dictionary<string, NodeInfo> config2)
+        public CompareResult Compare(Dictionary<string, NodeInfo> config1, Dictionary<string, NodeInfo> config2)
         {
             var result = new CompareResult
             {
@@ -188,7 +156,7 @@
             return sb.ToString();
         }
 
-        private string GenerateReport(Dictionary<string, NodeInfo> keysConfig1, Dictionary<string, NodeInfo> keysConfig2, CompareResult result)
+        public string GenerateReport(Dictionary<string, NodeInfo> keysConfig1, Dictionary<string, NodeInfo> keysConfig2, CompareResult result)
         {
             var sb = new StringBuilder();
 
@@ -220,33 +188,6 @@
             }
 
             return sb.ToString();
-        }
-
-        private void btnCompare_Click(object sender, EventArgs e)
-        {
-            lblStatus.Text = @"Comparing...";
-
-            var keysConfig1 = XMLToDictionary(tbConfig1.Text);
-            var keysConfig2 = XMLToDictionary(tbConfig2.Text);
-            var result = Compare(keysConfig1, keysConfig2);
-            var report = GenerateReport(keysConfig1, keysConfig2, result);
-
-            lblStatus.Text = @"Saving report...";
-
-            try
-            {
-                var file = File.CreateText(tbResult.Text);
-                file.WriteLine("Comparison result between {0} (1) and {1} (2)", tbConfig1.Text, tbConfig2.Text);
-                file.Write(report);
-                file.Flush();
-                file.Close();
-
-                lblStatus.Text = @"Done";
-            }
-            catch (Exception ex)
-            {
-                lblStatus.Text = @"Error saving the report: " + ex.Message; 
-            }
         }
     }
 }
