@@ -1,4 +1,6 @@
-﻿namespace XmlConfigCompare
+﻿using Microsoft.Extensions.Configuration;
+
+namespace XmlConfigCompare
 {
     internal static class Program
     {
@@ -10,10 +12,14 @@
                 return;
             }
 
-            RunConsole(args[0], args[1], args[2]);
+            var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+            var keyAttributes = configuration.GetSection("KeyAttributes").GetChildren().Select(v => v.Value).ToArray();
+            var ignorePaths = configuration.GetSection("IgnorePaths").GetChildren().Select(v => v.Value).ToArray();
+                
+            RunConsole(args[0], args[1], args[2], keyAttributes, ignorePaths);
         }
 
-        private static void RunConsole(string config1Path, string config2Path, string diffPath)
+        private static void RunConsole(string config1Path, string config2Path, string diffPath, string[]? keyAttributes = null, string[]? ignorePaths = null)
         {
             if (!File.Exists(config1Path))
             {
@@ -28,7 +34,7 @@
             
             Console.WriteLine("Comparing...");
 
-            var comparator = new Comparator();
+            var comparator = new Comparator(keyAttributes, ignorePaths);
 
             var keysConfig1 = comparator.XMLToDictionary(config1Path);
             var keysConfig2 = comparator.XMLToDictionary(config2Path);
@@ -48,7 +54,7 @@
             try
             {
                 var file = File.CreateText(diffPath);
-                file.WriteLine("Comparison result between {0} (1) and {1} (2)", config1Path, config2Path);
+                file.WriteLine("# Comparison result between {0} (1) and {1} (2)", config1Path, config2Path);
                 file.Write(report);
                 file.Flush();
                 file.Close();
